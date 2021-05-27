@@ -4,12 +4,12 @@ set -x
 export DOMAIN=${1:-chat.rawn.uk}
 export EMAIL=${2:-brtknr@bath.edu}
 
-sudo certbot renew --cert-name ${DOMAIN} || sudo certbot certonly --manual --preferred-challenges=dns -d ${DOMAIN} -m ${EMAIL}
+sudo certbot renew --cert-name ${DOMAIN} --pre-hook 'systemctl stop nginx' --post-hook 'systemctl start nginx' || sudo certbot certonly --manual --preferred-challenges=dns -d ${DOMAIN} -m ${EMAIL}
 sudo cat /etc/letsencrypt/live/${DOMAIN}/{fullchain,privkey}.pem > ~/.weechat/ssl/relay.pem
 
 echo "*/set weechat.network.gnutls_ca_file '/etc/ssl/certs/ca-certificates.crt'" > ~/.weechat/weechat_fifo
 echo "*/relay sslcertkey" > ~/.weechat/weechat_fifo
-(crontab -l; echo "0 3 1 */2 * $(pwd)/$(basename $0) ${DOMAIN}") | uniq | crontab
+(crontab -l; echo "0 3 * * * $(readlink -f $0) ${DOMAIN}") | uniq | crontab
 echo "*/reconnect" > ~/.weechat/weechat_fifo
 
 if [[ ! -f /etc/systemd/system/weechat.service ]]; then
