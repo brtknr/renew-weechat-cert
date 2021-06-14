@@ -4,13 +4,16 @@ set -x
 export DOMAIN=${1:-chat.rawn.uk}
 export EMAIL=${2:-brtknr@bath.edu}
 
+echo "Europe/London" > /etc/timezone
+
 sudo certbot renew --cert-name ${DOMAIN} --pre-hook 'systemctl stop nginx' --post-hook 'systemctl start nginx' || sudo certbot certonly --manual --preferred-challenges=dns -d ${DOMAIN} -m ${EMAIL}
+mv ~/.weechat/certs/relay.pem{,.bak}
 sudo cat /etc/letsencrypt/live/${DOMAIN}/{fullchain,privkey}.pem > ~/.weechat/certs/relay.pem
 echo "*/set weechat.network.gnutls_ca_file /etc/ssl/certs/ca-certificates.crt" > ~/.weechat/weechat_fifo
 echo "*/set relay.network.ssl_cert_key %h/certs/relay.pem" > ~/.weechat/weechat_fifo
 echo "*/relay sslcertkey" > ~/.weechat/weechat_fifo
-echo "*/reconnect" > ~/.weechat/weechat_fifo
 echo "*/save" > ~/.weechat/weechat_fifo
+diff ~/.weechat/certs/relay.pem{,.bak} || (echo "*/reconnect" > ~/.weechat/weechat_fifo)
 
 (crontab -l; echo "0 3 * * * $(readlink -f $0) ${DOMAIN}") | uniq | crontab
 
