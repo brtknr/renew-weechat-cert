@@ -1,4 +1,7 @@
 #! /usr/bin/env bash
+
+RESULT=`sudo certbot certificates -d *.rawn.uk`
+
 set -x
 
 export DOMAIN=${1:-chat.rawn.uk}
@@ -6,7 +9,13 @@ export EMAIL=${2:-brtknr@bath.edu}
 
 echo "Europe/London" | sudo tee /etc/timezone
 
-sudo certbot renew --cert-name ${DOMAIN} --pre-hook 'systemctl stop nginx' --post-hook 'systemctl start nginx' || sudo certbot certonly --agree-tos --preferred-challenges=dns -d ${DOMAIN} -m ${EMAIL}
+CERTNAME=`echo "$RESULT" | grep "Certificate Name" | cut -f5 -d" "`
+
+if [[ -n "$CERTNAME" ]]; then
+    sudo certbot renew --cert-name $CERTNAME --pre-hook 'systemctl stop nginx' --post-hook 'systemctl start nginx'
+else
+    sudo certbot certonly --agree-tos --preferred-challenges=dns --manual -d ${DOMAIN} -m ${EMAIL}
+fi
 mv ~/.weechat/certs/relay.pem{,.bak}
 sudo cat /etc/letsencrypt/live/${DOMAIN}/{fullchain,privkey}.pem > ~/.weechat/certs/relay.pem
 echo "*/set weechat.network.gnutls_ca_file /etc/ssl/certs/ca-certificates.crt" > ~/.weechat/weechat_fifo
